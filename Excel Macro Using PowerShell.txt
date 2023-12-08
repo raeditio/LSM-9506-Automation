@@ -1,74 +1,50 @@
-Sub StartDataCaptureAndLogData()
-    Dim outputDetected As Boolean
-    Dim skipDetected As Boolean
-    Dim receivedData As String
+Sub ReadDataFromCOM21()
     Dim comPort As String
-    Dim firstDataLogged As Boolean
+    comPort = "COM21" ' Replace with your COM port
     
-    ' Prompt the user to input the COM port
-    comPort = InputBox("Enter the COM port (e.g., COM1):", "COM Port Selection")
+    ' Send data measurement start signal
+    Dim startSignal As String
+    startSignal = "R" ' Replace with your start signal
+    SendSerialData comPort, startSignal
     
-    ' Validate the COM port input
-    If comPort = "" Then
-        MsgBox "COM port not specified. Exiting."
-        Exit Sub
-    End If
+    ' Log the first data into the selected cell
+    Dim firstData As String
+    firstData = ReadSerialData(comPort)
+    ActiveCell.Value = firstData
     
-    ' Send a signal to start data capture
-    Dim objShell As Object
-    Dim objExec As Object
-    Set objShell = CreateObject("WScript.Shell")
-    Set objExec = objShell.Exec("powershell.exe -Command ""& { $port= new-Object System.IO.Ports.SerialPort '" & comPort & "', 9600; $port.Open(); $port.WriteLine('CR'); $port.Close(); }""")
-    
-    MsgBox "Start signal sent. Waiting for data..."
-    
-    outputDetected = False
-    skipDetected = False
-    receivedData = ""
-    
-    firstDataLogged = False
-    outputDetected = False
-    skipDetected = False
-    receivedData = ""
-    
+    ' Start continuous data request loop
     Do
-        Application.Wait Now + TimeValue("0:00:02") ' Wait for 2 seconds
+        Application.Wait Now + TimeSerial(0, 0, 1) ' Wait for 1 second
         
-        ' Read data from the serial port using PowerShell with the user-specified COM port
-        Set objShell = CreateObject("WScript.Shell")
-        Set objExec = objShell.Exec("powershell.exe -Command ""& { $port= new-Object System.IO.Ports.SerialPort '" & comPort & "', 9600; $port.Open(); Start-Sleep -s 1; $receivedData = $port.ReadLine(); $port.Close(); $receivedData }""")
+        ' Request data every second
+        Dim requestData As String
+        requestData = ReadSerialData(comPort)
         
-        receivedData = objExec.StdOut.ReadAll()
-        
-        If Len(receivedData) > 0 Then
-            ' Remove the first three characters from the received data
-            If Len(receivedData) > 3 Then
-                receivedData = Mid(receivedData, 4) ' Remove first three characters
-            Else
-                receivedData = "" ' If less than 3 characters, set as empty string
-            End If
-            
-            ' Log the received data into Column C starting from the selected row
-            Dim selectedRow As Long
-            selectedRow = ActiveCell.Row
-            
-            If Not firstDataLogged Then
-                Cells(selectedRow, 3).Value = receivedData
-                firstDataLogged = True
-            Else
-                If Not outputDetected Then
-                    Cells(selectedRow + 1, 3).Value = receivedData
-                    selectedRow = selectedRow + 1 ' Move to the next row
-                End If
-            End If
-            outputDetected = True
-        Else
-            outputDetected = False
+        ' Check if error code is detected in the received data
+        If Left(requestData, 5) = "ER0" Then
+            ' Log the next data entry to the next row
+            ActiveCell.Offset(1, 0).Value = Mid(requestData, 7) ' Log data without the error code
         End If
     Loop
-    ' Send stop command to the device after data logging is completed
-    Dim stopCommand As String
-    stopCommand = "CL" ' Stop command is CL
+End Sub
+
+Function ReadSerialData(comPort As String) As String
+    On Error Resume Next ' Suppress error for timeout or no data received
+    
+    Dim receivedData As String
+    Dim objShell As Object
+    Dim objExec As Object
+    
     Set objShell = CreateObject("WScript.Shell")
-    objShell.Run "powershell.exe -Command ""& { $port= new-Object System.IO.Ports.SerialPort '" & comPort & "', 9600; $port.Open(); $port.WriteLine('" & stopCommand & "'); $port.Close(); }"""
+    Set objExec = objShell.Exec("powershell.exe -Command ""& { $port= new-Object System.IO.Ports.SerialPort '" & comPort & "', 9600; $port.Open(); $receivedData = $port.ReadLine(); $port.Close(); $receivedData }""")
+    
+    receivedData = objExec.StdOut.ReadAll()
+    ReadSerialData = Trim(receivedData)
+End Function
+
+Sub SendSerialData(comPort As String, data As String)
+    Dim objShell As Object
+    Set objShell = CreateObject("WScript.Shell")
+    
+    objShell.Run "powershell.exe -Command ""& { $port= new-Object System.IO.Ports.SerialPort '" & comPort & "', 9600; $port.Open(); $port.WriteLine('" & data & "'); $port.Close(); }"""
 End Sub
