@@ -1,0 +1,43 @@
+Sub ReadSerialPortAndLogData()
+    Dim outputDetected As Boolean
+    Dim skipDetected As Boolean
+    Dim receivedData As String
+    Dim comPort As String
+    
+    ' Prompt the user to input the COM port
+    comPort = InputBox("Enter the COM port (e.g., COM1):", "COM Port Selection")
+    
+    ' Validate the COM port input
+    If comPort = "" Then
+        MsgBox "COM port not specified. Exiting."
+        Exit Sub
+    End If
+    
+    outputDetected = False
+    skipDetected = False
+    receivedData = ""
+    
+    Do
+        Application.Wait Now + TimeValue("0:00:02") ' Wait for 2 seconds
+        
+        ' Read data from the serial port using PowerShell with the user-specified COM port
+        Dim objShell As Object
+        Dim objExec As Object
+        Set objShell = CreateObject("WScript.Shell")
+        Set objExec = objShell.Exec("powershell.exe -Command ""& { $port= new-Object System.IO.Ports.SerialPort '" & comPort & "', 9600; $port.Open(); Start-Sleep -s 1; $receivedData = $port.ReadLine(); $port.Close(); $receivedData }""")
+        
+        receivedData = objExec.StdOut.ReadAll()
+        
+        If Len(receivedData) > 0 Then
+            ' Log the received data into Column C starting from the selected row
+            Dim selectedRow As Long
+            selectedRow = ActiveCell.Row
+            
+            Cells(selectedRow, 3).Value = receivedData
+            selectedRow = selectedRow + 1 ' Move to the next row
+        Else
+            MsgBox "No data received."
+        End If
+        
+    Loop
+End Sub
