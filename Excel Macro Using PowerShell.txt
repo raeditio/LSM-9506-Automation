@@ -18,7 +18,7 @@ Sub StartDataCaptureAndLogData()
     Dim objShell As Object
     Dim objExec As Object
     Set objShell = CreateObject("WScript.Shell")
-    Set objExec = objShell.Exec("powershell.exe -Command ""& { $port= new-Object System.IO.Ports.SerialPort '" & comPort & "', 9600; $port.Open(); $port.WriteLine('StartDataCapture'); $port.Close(); }""")
+    Set objExec = objShell.Exec("powershell.exe -Command ""& { $port= new-Object System.IO.Ports.SerialPort '" & comPort & "', 9600; $port.Open(); $port.WriteLine('CR'); $port.Close(); }""")
     
     MsgBox "Start signal sent. Waiting for data..."
     
@@ -66,4 +66,9 @@ Sub StartDataCaptureAndLogData()
             outputDetected = False
         End If
     Loop
+    ' Send stop command to the device after data logging is completed
+    Dim stopCommand As String
+    stopCommand = "CL" ' Stop command is CL
+    Set objShell = CreateObject("WScript.Shell")
+    objShell.Run "powershell.exe -Command ""& { $port= new-Object System.IO.Ports.SerialPort '" & comPort & "', 9600; $port.Open(); $port.WriteLine('" & stopCommand & "'); $port.Close(); }"""
 End Sub
