@@ -1,0 +1,33 @@
+Sub ReadSerialPortAndLogData()
+    Dim outputDetected As Boolean
+    Dim skipDetected As Boolean
+    Dim receivedData As String
+    
+    outputDetected = False
+    skipDetected = False
+    receivedData = ""
+    
+    Do
+        Application.Wait Now + TimeValue("0:00:02") ' Wait for 2 seconds
+        
+        ' Read data from the serial port using PowerShell
+        Dim objShell As Object
+        Dim objExec As Object
+        Set objShell = CreateObject("WScript.Shell")
+        Set objExec = objShell.Exec("powershell.exe -Command ""& { $port= new-Object System.IO.Ports.SerialPort 'COM1', 9600; $port.Open(); Start-Sleep -s 1; $receivedData = $port.ReadLine(); $port.Close(); $receivedData }""")
+        
+        receivedData = objExec.StdOut.ReadAll()
+        
+        If Len(receivedData) > 0 Then
+            ' Log the received data into Column C starting from the selected row
+            Dim selectedRow As Long
+            selectedRow = ActiveCell.Row
+            
+            Cells(selectedRow, 3).Value = receivedData
+            selectedRow = selectedRow + 1 ' Move to the next row
+        Else
+            MsgBox "No data received."
+        End If
+        
+    Loop
+End Sub

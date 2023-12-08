@@ -1,0 +1,68 @@
+Option Explicit
+
+Dim WithEvents serialPort As Object
+Dim outputDetected As Boolean
+Dim skipDetected As Boolean
+Dim receivedData As String
+
+Sub StartSerialCommunication()
+    Set serialPort = CreateObject("MSCommLib.MSComm")
+    
+    With serialPort
+        .CommPort = 1 ' Replace with your COM port number
+        .Settings = "9600,N,8,1" ' Replace with your serial settings
+        .InputMode = comInputModeText
+        .PortOpen = True
+    End With
+    
+    StartDataCheckLoop
+End Sub
+
+Sub StartDataCheckLoop()
+    Dim checkDataThread As Object
+    Set checkDataThread = CreateObject("Scripting.FileSystemObject").CreateTextFile(ThisWorkbook.Path & "\CheckDataThread.vbs")
+    
+    Dim scriptText As String
+    scriptText = "Set WshShell = CreateObject(""WScript.Shell"")" & vbCrLf & _
+                 "WshShell.Run """ & ThisWorkbook.Path & "\CheckDataLoop.vbs"", 0, False"
+    
+    checkDataThread.Write scriptText
+    checkDataThread.Close
+    
+    Dim objShell As Object
+    Set objShell = CreateObject("WScript.Shell")
+    objShell.Run "wscript.exe " & ThisWorkbook.Path & "\CheckDataThread.vbs", 0, True
+End Sub
+
+Sub serialPort_OnComm()
+    Select Case serialPort.CommEvent
+        Case comEvReceive ' Data received
+            outputDetected = True
+            receivedData = serialPort.Input
+    End Select
+End Sub
+
+Sub LogData()
+    Dim selectedRow As Long
+    selectedRow = ActiveCell.Row
+    
+    Do While True
+        Application.Wait Now + TimeValue("0:00:02") ' Wait for 2 seconds
+        
+        If Not outputDetected Then
+            ' Record the received data if no output was detected
+            skipDetected = True
+            receivedData = serialPort.Input
+        ElseIf skipDetected Then
+            ' Record the next data after an output is skipped
+            receivedData = serialPort.Input
+            skipDetected = False ' Reset the skip detection flag
+            
+            ' Log the data into Column C starting from the selected row
+            Cells(selectedRow, 3).Value = receivedData
+            selectedRow = selectedRow + 1 ' Move to the next row
+        End If
+        
+        outputDetected = False ' Reset the output detection flag
+    Loop
+End Sub
