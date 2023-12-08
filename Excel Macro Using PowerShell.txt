@@ -1,25 +1,48 @@
-Sub ReadSerialPortAndLogData()
+Sub StartDataCaptureAndLogData()
     Dim outputDetected As Boolean
     Dim skipDetected As Boolean
     Dim receivedData As String
+    Dim comPort As String
+    
+    ' Prompt the user to input the COM port
+    comPort = InputBox("Enter the COM port (e.g., COM1):", "COM Port Selection")
+    
+    ' Validate the COM port input
+    If comPort = "" Then
+        MsgBox "COM port not specified. Exiting."
+        Exit Sub
+    End If
+    
+    ' Send a signal to start data capture
+    Dim objShell As Object
+    Dim objExec As Object
+    Set objShell = CreateObject("WScript.Shell")
+    Set objExec = objShell.Exec("powershell.exe -Command ""& { $port= new-Object System.IO.Ports.SerialPort '" & comPort & "', 9600; $port.Open(); $port.WriteLine('StartDataCapture'); $port.Close(); }""")
+    
+    MsgBox "Start signal sent. Waiting for data..."
     
     outputDetected = False
     skipDetected = False
     receivedData = ""
-    
+
     Do
         Application.Wait Now + TimeValue("0:00:02") ' Wait for 2 seconds
         
-        ' Read data from the serial port using PowerShell
-        Dim objShell As Object
-        Dim objExec As Object
+        ' Read data from the serial port using PowerShell with the user-specified COM port
         Set objShell = CreateObject("WScript.Shell")
-        Set objExec = objShell.Exec("powershell.exe -Command ""& { $port= new-Object System.IO.Ports.SerialPort 'COM1', 9600; $port.Open(); Start-Sleep -s 1; $receivedData = $port.ReadLine(); $port.Close(); $receivedData }""")
+        Set objExec = objShell.Exec("powershell.exe -Command ""& { $port= new-Object System.IO.Ports.SerialPort '" & comPort & "', 9600; $port.Open(); Start-Sleep -s 1; $receivedData = $port.ReadLine(); $port.Close(); $receivedData }""")
         
         receivedData = objExec.StdOut.ReadAll()
         
         If Len(receivedData) > 0 Then
-            ' Log the received data into Column C starting from the selected row
+            ' Remove the first three characters from the received data
+            If Len(receivedData) > 3 Then
+                receivedData = Mid(receivedData, 4) ' Remove first three characters
+            Else
+                receivedData = "" ' If less than 3 characters, set as empty string
+            End If
+            
+            ' Log the modified received data into Column C starting from the selected row
             Dim selectedRow As Long
             selectedRow = ActiveCell.Row
             
