@@ -1,4 +1,4 @@
-Sub ReadWriteSerialData()
+Sub ReadWriteSerialData_OpenStatement()
     Dim comPort As String
     comPort = InputBox("Enter COM Port (e.g., COM21):", "COM Port Selection", "COM21")
     
@@ -6,77 +6,55 @@ Sub ReadWriteSerialData()
         comPort = "COM21" ' Default COM port if skipped
     End If
     
-    ' Initialize MSComm control
-    Dim WithEvents MSComm1 As MSCommLib.MSComm
-    Set MSComm1 = New MSCommLib.MSComm
+    Dim fileNumber As Integer
+    fileNumber = FreeFile
     
-    MSComm1.CommPort = Val(Mid(comPort, 4)) ' Extract port number
-    MSComm1.Settings = "9600,N,8,1" ' Set baud rate, parity, data bits, stop bits
-    MSComm1.InputLen = 0 ' Set the input buffer to read all data
-    MSComm1.InputMode = comInputModeText ' Set input mode to text
-    MSComm1.EOFEnable = True ' Enable EOF detection
-    MSComm1.EofChar = vbCrLf ' Set delimiter as CR
-    
-    On Error Resume Next
-    MSComm1.PortOpen = True ' Open the COM port
+    Open comPort For Binary Access Read Write As #fileNumber
     
     If Err Then
         MsgBox "Error opening COM port. Check port settings."
         Exit Sub
     End If
-    On Error GoTo 0
+    
+    ' Write 'R' command to the device
+    Print #fileNumber, "R"
     
     Dim receivedData As String
-    
-    ' Send 'R' command to the device
-    MSComm1.Output = "R" & vbCrLf
-    
-    Do
-        DoEvents ' Allow other events to be processed
-        If MSComm1.InBufferCount > 0 Then
-            receivedData = MSComm1.Input
-            Exit Do
-        End If
-    Loop Until False
-    
-    If Left(receivedData, 3) = "ER0" Then
-        Do
-            MSComm1.Output = "D" & vbCrLf ' Send 'D' command until non-ER0 data received
-            DoEvents
-            If MSComm1.InBufferCount > 0 Then
-                receivedData = MSComm1.Input
-                If Left(receivedData, 3) <> "ER0" Then
-                    ActiveCell.Value = receivedData ' Record non-ER0 data to selected cell
-                    Exit Do
-                End If
-            End If
-        Loop Until False
-    ElseIf Left(receivedData, 2) = "ER" Then
-        MsgBox "Error: " & receivedData & ". Terminating macro."
-        MSComm1.PortOpen = False ' Close the COM port
-        Exit Sub
-    ElseIf receivedData = "" Then
-        MsgBox "No data received. Terminating macro."
-        MSComm1.PortOpen = False ' Close the COM port
-        Exit Sub
-    Else
-        ActiveCell.Value = receivedData ' Record data to selected cell
-    End If
-    
-    Do
-        MSComm1.Output = "D" & vbCrLf ' Send 'D' command once every second
+    Do Until EOF(fileNumber)
+        Input #fileNumber, receivedData ' Read data from the COM port
+        
+        ' Process the received data based on requirements
+        Select Case True
+            Case Left(receivedData, 3) = "ER0"
+                Do
+                    Print #fileNumber, "D" ' Send 'D' command until non-ER0 data received
+                    DoEvents
+                    Input #fileNumber, receivedData ' Read data from the COM port
+                    If Left(receivedData, 3) <> "ER0" Then
+                        ActiveCell.Value = receivedData ' Record non-ER0 data to selected cell
+                        Exit Do
+                    End If
+                Loop Until False
+            
+            Case Left(receivedData, 2) = "ER"
+                MsgBox "Error: " & receivedData & ". Terminating macro."
+                Close #fileNumber
+                Exit Sub
+            
+            Case receivedData = ""
+                MsgBox "No data received. Terminating macro."
+                Close #fileNumber
+                Exit Sub
+            
+            Case Else
+                ActiveCell.Value = receivedData ' Record data to selected cell
+        End Select
+        
+        ' Write 'D' command once every second
+        Print #fileNumber, "D"
         Application.Wait Now + TimeValue("00:00:01") ' Wait for one second
-        DoEvents
-        If MSComm1.InBufferCount > 0 Then
-            receivedData = MSComm1.Input
-            If Left(receivedData, 3) = "ER0" Then
-                Continue Do
-            Else
-                ActiveCell.Offset(1, 0).Value = receivedData ' Record data to the next cell
-            End If
-        End If
-    Loop Until False
+    Loop
     
-    MSComm1.PortOpen = False ' Close the COM port
+    Close #fileNumber ' Close the COM port
 End Sub
 
