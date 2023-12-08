@@ -1,58 +1,88 @@
-Dim WithEvents serialPort As MSCommLib.MSComm
-Dim outputDetected As Boolean
-Dim skipDetected As Boolean
-Dim receivedData As String
+Dim WithEvents MSComm1 As MSCommLib.MSComm ' Declare the MSComm control
 
-Sub StartDataCaptureAndLogData()
-    Dim comPort As String
-    comPort = InputBox("Enter the COM port (e.g., COM1):", "COM Port Selection")
-
-    If comPort = "" Then
-        MsgBox "COM port not specified. Exiting."
-        Exit Sub
-    End If
+Sub ReadDataFromCOMPort()
+    Set MSComm1 = New MSCommLib.MSComm ' Initialize the MSComm control
     
-    ' Initialize MSComm control
-    Set serialPort = New MSCommLib.MSComm
-    With serialPort
-        .CommPort = Val(Mid(comPort, 4)) ' Extract the port number (e.g., from "COM1" to "1")
-        .Settings = "9600,N,8,1" ' Set your desired settings
-        .InputMode = comInputModeText
-        .PortOpen = True
-    End With
+    ' Configure COM port settings
+    MSComm1.CommPort = 21 ' Replace with the desired COM port number
+    MSComm1.Settings = "9600,N,8,1" ' Set baud rate, parity, data bits, stop bits
+    MSComm1.InputLen = 0 ' Set the input buffer to read all data
+    MSComm1.InputMode = comInputModeText ' Set input mode to text
+    MSComm1.RThreshold = 1 ' Set the RThreshold to 1 to read each character
     
-    outputDetected = False
-    skipDetected = False
-    receivedData = ""
+    MSComm1.PortOpen = True ' Open the COM port
     
-    MsgBox "Start signal sent. Waiting for data..."
+    ' Send 'R' command to the device
+    MSComm1.Output = "R" & vbCrLf
+    
+    Dim receivedData As String
+    Dim startTime As Double
+    startTime = Timer
     
     Do
-        Application.Wait Now + TimeValue("0:00:02") ' Wait for 2 seconds
-        
-        If serialPort.InBufferCount > 0 Then
-            receivedData = serialPort.Input
-            If Len(receivedData) > 3 Then
-                receivedData = Mid(receivedData, 4) ' Remove first three characters
+        If MSComm1.InBufferCount > 0 Then ' Check if there's data in the input buffer
+            receivedData = MSComm1.Input ' Read the data from the input buffer
+            
+            ' Check for 'ER0' error code
+            If Left(receivedData, 3) = "ER0" Then
+                ' Continue sending 'D' command until non-error data is received
+                Do
+                    MSComm1.Output = "D" & vbCrLf ' Send data request command 'D'
+                    receivedData = WaitForNonErrorData ' Wait for non-error data
+                    
+                    ' Check if received data is non-error
+                    If Left(receivedData, 3) <> "ER0" Then
+                        ActiveCell.Value = Mid(receivedData, 4) ' Log data without the first three characters
+                        Exit Do ' Exit loop after logging non-error data
+                    End If
+                Loop
+            ElseIf Left(receivedData, 2) = "ER" Then
+                ' Terminate if an error starting with 'ER' is received
+                MsgBox "Error detected: " & receivedData
+                Exit Do
+            ElseIf receivedData = "" Then
+                ' Terminate if no data is received after 5 seconds
+                MsgBox "No data received. Exiting."
+                Exit Do
             Else
-                receivedData = "" ' If less than 3 characters, set as empty string
+                ActiveCell.Value = receivedData ' Log data received
             End If
-            
-            ' Log the modified received data into Column C starting from the selected row
-            Dim selectedRow As Long
-            selectedRow = ActiveCell.Row
-            
-            Cells(selectedRow, 3).Value = receivedData
-            selectedRow = selectedRow + 1 ' Move to the next row
-        Else
-            MsgBox "No data received."
         End If
         
+        ' Check for timeout (5 seconds)
+        If Timer - startTime > 5 Then
+            MsgBox "No data received. Exiting."
+            Exit Do
+        End If
+        
+        DoEvents ' Allow other events to be processed
     Loop
+    
+    MSComm1.PortOpen = False ' Close the COM port when done
 End Sub
 
-Private Sub Workbook_BeforeClose(Cancel As Boolean)
-    If serialPort.PortOpen Then
-        serialPort.PortOpen = False
-    End If
-End Sub
+Function WaitForNonErrorData() As String
+    Dim receivedData As String
+    Dim startTime As Double
+    startTime = Timer
+    
+    Do
+        If MSComm1.InBufferCount > 0 Then ' Check if there's data in the input buffer
+            receivedData = MSComm1.Input ' Read the data from the input buffer
+            
+            ' Check if received data is non-error
+            If Left(receivedData, 3) <> "ER0" Then
+                WaitForNonErrorData = receivedData ' Return non-error data
+                Exit Function
+            End If
+        End If
+        
+        ' Check for timeout (5 seconds)
+        If Timer - startTime > 5 Then
+            WaitForNonErrorData = ""
+            Exit Function
+        End If
+        
+        DoEvents ' Allow other events to be processed
+    Loop
+End Function

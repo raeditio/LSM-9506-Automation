@@ -2,6 +2,11 @@ Sub ReadDataFromRS232()
     Dim comPort As String
     comPort = InputBox("Enter the COM port (e.g., COM21):", "COM Port Selection", "COM21")
     
+    ' Set COM port settings using PowerShell
+    Dim setComSettings As String
+    setComSettings = "powershell.exe -Command ""& { $port= new-Object System.IO.Ports.SerialPort '" & comPort & "', 9600, [System.IO.Ports.Parity]::None, 8, [System.IO.Ports.StopBits]::One; $port.ReadTimeout = 5000; $port.NewLine = '\r'; $port.Open(); }"""
+    Shell setComSettings, vbHide
+    
     ' Send data read command 'R' to the device
     SendSerialData comPort, "R"
     
@@ -51,7 +56,7 @@ End Sub
 
 Function SendSerialData(comPort As String, data As String)
     Dim command As String
-    command = "powershell.exe -Command ""& { $port= new-Object System.IO.Ports.SerialPort '" & comPort & "', 9600; $port.Open(); $port.Write('" & data & "'); $port.Close(); }"""
+    command = "powershell.exe -Command ""& { $port= new-Object System.IO.Ports.SerialPort '" & comPort & "'; $port.NewLine = '\r'; $port.Open(); $port.WriteLine('" & data & "'); $port.Close(); }"""
     Shell command, vbHide
 End Function
 
@@ -81,6 +86,6 @@ End Function
 
 Function ReadSerialData(comPort As String) As String
     Dim command As String
-    command = "powershell.exe -Command ""& { $port= new-Object System.IO.Ports.SerialPort '" & comPort & "', 9600; $port.Open(); Start-Sleep -s 1; $receivedData = $port.ReadLine(); $port.Close(); $receivedData }"""
+    command = "powershell.exe -Command ""& { $port= new-Object System.IO.Ports.SerialPort '" & comPort & "'; $port.NewLine = '\r'; $port.ReadTimeout = 5000; $port.Open(); $receivedData = $port.ReadLine(); $port.Close(); $receivedData }"""
     ReadSerialData = VBA.CreateObject("WScript.Shell").Exec(command).StdOut.ReadAll()
 End Function
