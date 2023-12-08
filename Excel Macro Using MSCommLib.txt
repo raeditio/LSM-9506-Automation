@@ -1,15 +1,15 @@
 Sub ReadWriteSerialData_OpenStatement()
     Dim comPort As String
-    comPort = InputBox("Enter COM Port (e.g., COM21):", "COM Port Selection", "COM21")
+    comPort = InputBox("Enter COM Port (e.g., COM1):", "COM Port Selection", "COM1")
     
     If comPort = "" Then
-        comPort = "COM21" ' Default COM port if skipped
+        comPort = "COM1" ' Default COM port if skipped
     End If
     
     Dim fileNumber As Integer
     fileNumber = FreeFile
     
-    Open comPort For Binary Access Read Write As #fileNumber
+    Open comPort For Random As #fileNumber Len = 1 ' Open the COM port
     
     If Err Then
         MsgBox "Error opening COM port. Check port settings."
@@ -17,19 +17,19 @@ Sub ReadWriteSerialData_OpenStatement()
     End If
     
     ' Write 'R' command to the device
-    Print #fileNumber, "R"
+    Put #fileNumber, , "R"
     
     Dim receivedData As String
-    Do Until EOF(fileNumber)
-        Input #fileNumber, receivedData ' Read data from the COM port
+    Do
+        Get #fileNumber, , receivedData ' Read data from the COM port
         
         ' Process the received data based on requirements
         Select Case True
             Case Left(receivedData, 3) = "ER0"
                 Do
-                    Print #fileNumber, "D" ' Send 'D' command until non-ER0 data received
+                    Put #fileNumber, , "D" ' Send 'D' command until non-ER0 data received
                     DoEvents
-                    Input #fileNumber, receivedData ' Read data from the COM port
+                    Get #fileNumber, , receivedData ' Read data from the COM port
                     If Left(receivedData, 3) <> "ER0" Then
                         ActiveCell.Value = receivedData ' Record non-ER0 data to selected cell
                         Exit Do
@@ -47,14 +47,4 @@ Sub ReadWriteSerialData_OpenStatement()
                 Exit Sub
             
             Case Else
-                ActiveCell.Value = receivedData ' Record data to selected cell
-        End Select
-        
-        ' Write 'D' command once every second
-        Print #fileNumber, "D"
-        Application.Wait Now + TimeValue("00:00:01") ' Wait for one second
-    Loop
-    
-    Close #fileNumber ' Close the COM port
-End Sub
-
+                ActiveCell.Value = receivedDat
