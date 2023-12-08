@@ -4,47 +4,41 @@ Sub ReadDataFromCOM21()
     
     ' Send data measurement start signal
     Dim startSignal As String
-    startSignal = "R" ' Replace with your start signal
+    startSignal = "R" ' R is the single-run measurement start command for LSM-9506
     SendSerialData comPort, startSignal
     
     ' Log the first data into the selected cell
     Dim firstData As String
     firstData = ReadSerialData(comPort)
-    ActiveCell.Value = firstData
+    ActiveCell.Value = Mid(firstData, 4) ' Log data without the first three characters
+    
+    Dim errorDetected As Boolean
+    errorDetected = False
     
     ' Start continuous data request loop
     Do
         Application.Wait Now + TimeSerial(0, 0, 1) ' Wait for 1 second
         
-        ' Request data every second
-        Dim requestData As String
-        requestData = ReadSerialData(comPort)
+        ' Send data request command every second
+        Dim requestDataCommand As String
+        requestDataCommand = "D" ' D is the data request command
+        SendSerialData comPort, requestDataCommand
         
-        ' Check if error code is detected in the received data
-        If Left(requestData, 5) = "ER0" Then
-            ' Log the next data entry to the next row
-            ActiveCell.Offset(1, 0).Value = Mid(requestData, 7) ' Log data without the error code
+        ' Read the received data
+        Dim receivedData As String
+        receivedData = ReadSerialData(comPort)
+        
+        ' Check if any error code starting with 'ER' is detected in the received data
+        If Left(receivedData, 2) = "ER" Then
+            errorDetected = True ' Set error flag
+            MsgBox "Error detected: " & receivedData ' Display the error code
+            Exit Sub ' Terminate the macro
+        ElseIf Left(receivedData, 3) = "ER0" Then
+            errorDetected = True ' Set error flag for ER0
+        ElseIf Not errorDetected Then
+            ' Log the next non-error data entry to the next row
+            ActiveCell.Offset(1, 0).Value = Mid(receivedData, 4) ' Log data without the first three characters
+            Exit Do ' Exit loop after logging the non-error data
         End If
     Loop
-End Sub
-
-Function ReadSerialData(comPort As String) As String
-    On Error Resume Next ' Suppress error for timeout or no data received
-    
-    Dim receivedData As String
-    Dim objShell As Object
-    Dim objExec As Object
-    
-    Set objShell = CreateObject("WScript.Shell")
-    Set objExec = objShell.Exec("powershell.exe -Command ""& { $port= new-Object System.IO.Ports.SerialPort '" & comPort & "', 9600; $port.Open(); $receivedData = $port.ReadLine(); $port.Close(); $receivedData }""")
-    
-    receivedData = objExec.StdOut.ReadAll()
-    ReadSerialData = Trim(receivedData)
-End Function
-
-Sub SendSerialData(comPort As String, data As String)
-    Dim objShell As Object
-    Set objShell = CreateObject("WScript.Shell")
-    
-    objShell.Run "powershell.exe -Command ""& { $port= new-Object System.IO.Ports.SerialPort '" & comPort & "', 9600; $port.Open(); $port.WriteLine('" & data & "'); $port.Close(); }"""
 End Sub
