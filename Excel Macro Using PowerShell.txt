@@ -1,73 +1,86 @@
-Sub ReadDataFromCOM21()
+Sub ReadDataFromRS232()
     Dim comPort As String
-    comPort = "COM21" ' Replace with your COM port
+    comPort = InputBox("Enter the COM port (e.g., COM21):", "COM Port Selection", "COM21")
     
-    ' Send data measurement start signal
-    Dim startSignal As String
-    startSignal = "StartMeasurement" ' Replace with your start signal
-    SendSerialData comPort, startSignal
+    ' Send data read command 'R' to the device
+    SendSerialData comPort, "R"
     
-    ' Log the first data into the selected cell
-    Dim firstData As String
-    firstData = WaitForData(comPort, 5) ' Wait for 5 seconds for the first data
-    If Left(firstData, 3) = "ER0" Then
-        Do While True
-            firstData = WaitForData(comPort, 5) ' Wait for the next non-error data
-            If Left(firstData, 3) <> "ER0" Then Exit Do
+    Dim receivedData As String
+    receivedData = WaitForNonErrorData(comPort) ' Wait for non-error data
+    
+    ' Check for 'ER0' error code
+    If Left(receivedData, 3) = "ER0" Then
+        ' Continue sending 'D' command until non-error data is received
+        Do
+            SendSerialData comPort, "D" ' Send data request command 'D'
+            receivedData = WaitForNonErrorData(comPort) ' Wait for non-error data
+            
+            ' Check if received data is non-error
+            If Left(receivedData, 3) <> "ER0" Then
+                ActiveCell.Value = Mid(receivedData, 4) ' Log data without the first three characters
+                Exit Do ' Exit loop after logging non-error data
+            End If
         Loop
-    End If
-    
-    If firstData = "" Then
-        MsgBox "No initial data received. Exiting."
+    ElseIf Left(receivedData, 2) = "ER" Then
+        ' Terminate if an error starting with 'ER' is received
+        MsgBox "Error detected: " & receivedData
+        Exit Sub
+    ElseIf receivedData = "" Then
+        ' Terminate if no data is received after 5 seconds
+        MsgBox "No data received. Exiting."
         Exit Sub
     Else
-        ActiveCell.Value = Mid(firstData, 4) ' Log data without the first three characters
+        ActiveCell.Value = Mid(receivedData, 4) ' Log data without the first three characters
     End If
     
-    Dim errorDetected As Boolean
-    errorDetected = False
-    
-    Dim timeout As Long
-    timeout = Timer + 60 ' Timeout after 60 seconds
-    
-    ' Start continuous data request loop
+    ' Continuously send 'D' command until 'ER0' is received, and log the next non-error data
     Do
-        Application.Wait Now + TimeSerial(0, 0, 1) ' Wait for 1 second
+        SendSerialData comPort, "D" ' Send data request command 'D'
+        receivedData = WaitForNonErrorData(comPort) ' Wait for non-error data
         
-        ' Send data request command every second
-        Dim requestDataCommand As String
-        requestDataCommand = "DataRequest" ' Replace with your data request command
-        SendSerialData comPort, requestDataCommand
-        
-        ' Read the received data
-        Dim receivedData As String
-        receivedData = WaitForData(comPort, 5) ' Wait for 5 seconds for data
-        
-        ' Check if any error code starting with 'ER' is detected in the received data
-        If Left(receivedData, 2) = "ER" Then
-            If receivedData = "ER0" Then
-                ' Continue sending data request after encountering ER0
-                Continue Do
-            Else
-                ' Terminate the macro for other 'ER' error codes
-                MsgBox "Error detected: " & receivedData ' Display the error code
-                Exit Sub ' Terminate the macro
-            End If
-        ElseIf Not errorDetected And receivedData <> "" Then
-            ' Log the next non-error data entry to the next row
-            ActiveCell.Offset(1, 0).Value = Mid(receivedData, 4) ' Log data without the first three characters
-            Exit Do ' Exit loop after logging the non-error data
-        End If
-        
-        ' Check for timeout
-        If Timer > timeout Then
-            MsgBox "Timeout or PowerShell closed. Exiting."
+        ' Check for 'ER0' or other error codes
+        If Left(receivedData, 3) <> "ER0" And Left(receivedData, 2) = "ER" Then
+            MsgBox "Error detected: " & receivedData
             Exit Sub
+        ElseIf Left(receivedData, 3) <> "ER0" Then
+            ActiveCell.Offset(1, 0).Value = Mid(receivedData, 4) ' Log data without the first three characters
+            Exit Do ' Exit loop after logging non-error data
         End If
     Loop
 End Sub
 
-Function WaitForData(comPort As String, timeoutSeconds As Long) As String
-    ' Same as before
-    ' ...
+Function SendSerialData(comPort As String, data As String)
+    Dim command As String
+    command = "powershell.exe -Command ""& { $port= new-Object System.IO.Ports.SerialPort '" & comPort & "', 9600; $port.Open(); $port.Write('" & data & "'); $port.Close(); }"""
+    Shell command, vbHide
+End Function
+
+Function WaitForNonErrorData(comPort As String) As String
+    Dim receivedData As String
+    Dim startTime As Double
+    startTime = Timer
+    
+    Do
+        SendSerialData comPort, "D" ' Send data request command 'D'
+        receivedData = ReadSerialData(comPort) ' Read received data
+        
+        If Left(receivedData, 3) <> "ER0" Then
+            WaitForNonErrorData = receivedData ' Return non-error data
+            Exit Function
+        End If
+        
+        ' Check for timeout (5 seconds)
+        If Timer - startTime > 5 Then
+            WaitForNonErrorData = ""
+            Exit Function
+        End If
+        
+        Application.Wait Now + TimeSerial(0, 0, 1) ' Wait for 1 second
+    Loop
+End Function
+
+Function ReadSerialData(comPort As String) As String
+    Dim command As String
+    command = "powershell.exe -Command ""& { $port= new-Object System.IO.Ports.SerialPort '" & comPort & "', 9600; $port.Open(); Start-Sleep -s 1; $receivedData = $port.ReadLine(); $port.Close(); $receivedData }"""
+    ReadSerialData = VBA.CreateObject("WScript.Shell").Exec(command).StdOut.ReadAll()
 End Function
