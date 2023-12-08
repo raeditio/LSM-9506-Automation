@@ -4,16 +4,31 @@ Sub ReadDataFromCOM21()
     
     ' Send data measurement start signal
     Dim startSignal As String
-    startSignal = "R" ' R is the single-run measurement start command for LSM-9506
+    startSignal = "StartMeasurement" ' Replace with your start signal
     SendSerialData comPort, startSignal
     
     ' Log the first data into the selected cell
     Dim firstData As String
-    firstData = ReadSerialData(comPort)
-    ActiveCell.Value = Mid(firstData, 4) ' Log data without the first three characters
+    firstData = WaitForData(comPort, 5) ' Wait for 5 seconds for the first data
+    If Left(firstData, 3) = "ER0" Then
+        Do While True
+            firstData = WaitForData(comPort, 5) ' Wait for the next non-error data
+            If Left(firstData, 3) <> "ER0" Then Exit Do
+        Loop
+    End If
+    
+    If firstData = "" Then
+        MsgBox "No initial data received. Exiting."
+        Exit Sub
+    Else
+        ActiveCell.Value = Mid(firstData, 4) ' Log data without the first three characters
+    End If
     
     Dim errorDetected As Boolean
     errorDetected = False
+    
+    Dim timeout As Long
+    timeout = Timer + 60 ' Timeout after 60 seconds
     
     ' Start continuous data request loop
     Do
@@ -21,24 +36,38 @@ Sub ReadDataFromCOM21()
         
         ' Send data request command every second
         Dim requestDataCommand As String
-        requestDataCommand = "D" ' D is the data request command
+        requestDataCommand = "DataRequest" ' Replace with your data request command
         SendSerialData comPort, requestDataCommand
         
         ' Read the received data
         Dim receivedData As String
-        receivedData = ReadSerialData(comPort)
+        receivedData = WaitForData(comPort, 5) ' Wait for 5 seconds for data
         
         ' Check if any error code starting with 'ER' is detected in the received data
         If Left(receivedData, 2) = "ER" Then
-            errorDetected = True ' Set error flag
-            MsgBox "Error detected: " & receivedData ' Display the error code
-            Exit Sub ' Terminate the macro
-        ElseIf Left(receivedData, 3) = "ER0" Then
-            errorDetected = True ' Set error flag for ER0
-        ElseIf Not errorDetected Then
+            If receivedData = "ER0" Then
+                ' Continue sending data request after encountering ER0
+                Continue Do
+            Else
+                ' Terminate the macro for other 'ER' error codes
+                MsgBox "Error detected: " & receivedData ' Display the error code
+                Exit Sub ' Terminate the macro
+            End If
+        ElseIf Not errorDetected And receivedData <> "" Then
             ' Log the next non-error data entry to the next row
             ActiveCell.Offset(1, 0).Value = Mid(receivedData, 4) ' Log data without the first three characters
             Exit Do ' Exit loop after logging the non-error data
         End If
+        
+        ' Check for timeout
+        If Timer > timeout Then
+            MsgBox "Timeout or PowerShell closed. Exiting."
+            Exit Sub
+        End If
     Loop
 End Sub
+
+Function WaitForData(comPort As String, timeoutSeconds As Long) As String
+    ' Same as before
+    ' ...
+End Function
