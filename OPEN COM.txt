@@ -1,0 +1,56 @@
+Public Sub Send_2() ' send the character code for "2"
+  Dim COMport As Integer
+  COMport = FreeFile
+  Close #COMport
+  'Open COM21 port with baud rate 9600, No parity, 8 data bits, and 1 stop bit
+  Open "COM21:9600,N,8,1" For Random As #COMport
+  'Either
+  Put #COMport, , Asc("2")
+  'Or
+  'Put #COMport, , "2"
+  Close #COMport
+End Sub
+
+Public Sub Receive_COM21_and_Save2()  ' example for COM21, change number to suit
+  Dim timeout As Date
+  Dim byte1 As Byte, chars As String, lineEnding As String
+  Dim COMport As Integer
+  Dim destCell As Range, rowOffset As Long
+  'Set starting cell where received data will be saved
+  With ThisWorkbook.ActiveSheet
+    .Cells.Clear
+    Set destCell = .Range("A1")
+    rowOffset = 0
+  End With
+  'Define line ending character(s)
+  lineEnding = vbCr
+  'lineEnding = vbCrLf
+  'Monitor COM port for 30 seconds
+  timeout = Now + TimeValue("00:00:30")
+  COMport = FreeFile
+  Close COMport
+  'Open COM5 port with baud rate 2400, No parity, 8 data bits, and 1 stop bit.  These are the default port settings
+  'in HyperTerminal.  In HyperTerminal, use Flow control = None.
+  Open "COM21:9600,N,8,1" For Random As #COMport Len = 1
+  Debug.Print Now; "Started"
+  chars = ""
+  While Now < timeout
+    'Get 1 byte
+    Get #COMport, , byte1
+    Debug.Print Now; IIf(Chr(byte1) < " ", "<" & byte1 & ">", Chr(byte1))
+    chars = chars & Chr(byte1)
+    If Right(chars, Len(lineEnding)) = lineEnding Then
+      Debug.Print "Line:" & Left(chars, Len(chars) - Len(lineEnding))
+      destCell.Offset(rowOffset, 0).Value = Left(chars, Len(chars) - Len(lineEnding))
+      rowOffset = rowOffset + 1
+      chars = ""
+    End If
+    DoEvents
+  Wend
+  Close #COMport
+  Debug.Print Now; "Finished"
+  'Save sheet as an .xlsx file
+  destCell.Parent.Copy
+  ActiveWorkbook.SaveCopyAs ThisWorkbook.Path & "\COM_Port_Data.xlsx"
+  ActiveWorkbook.Close savechanges:=False
+End Sub
