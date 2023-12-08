@@ -47,4 +47,13 @@ Sub ReadWriteSerialData_OpenStatement()
                 Exit Sub
             
             Case Else
-                ActiveCell.Value = receivedDat
+                ActiveCell.Value = receivedData ' Record data to selected cell
+        End Select
+        
+        ' Write 'D' command once every second
+        Put #fileNumber, , "D"
+        Application.Wait Now + TimeValue("00:00:01") ' Wait for one second
+    Loop Until False
+    
+    Close #fileNumber ' Close the COM port
+End Sub
