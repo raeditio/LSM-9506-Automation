@@ -3,6 +3,7 @@ Sub StartDataCaptureAndLogData()
     Dim skipDetected As Boolean
     Dim receivedData As String
     Dim comPort As String
+    Dim firstDataLogged As Boolean
     
     ' Prompt the user to input the COM port
     comPort = InputBox("Enter the COM port (e.g., COM1):", "COM Port Selection")
@@ -24,7 +25,12 @@ Sub StartDataCaptureAndLogData()
     outputDetected = False
     skipDetected = False
     receivedData = ""
-
+    
+    firstDataLogged = False
+    outputDetected = False
+    skipDetected = False
+    receivedData = ""
+    
     Do
         Application.Wait Now + TimeValue("0:00:02") ' Wait for 2 seconds
         
@@ -42,15 +48,22 @@ Sub StartDataCaptureAndLogData()
                 receivedData = "" ' If less than 3 characters, set as empty string
             End If
             
-            ' Log the modified received data into Column C starting from the selected row
+            ' Log the received data into Column C starting from the selected row
             Dim selectedRow As Long
             selectedRow = ActiveCell.Row
             
-            Cells(selectedRow, 3).Value = receivedData
-            selectedRow = selectedRow + 1 ' Move to the next row
+            If Not firstDataLogged Then
+                Cells(selectedRow, 3).Value = receivedData
+                firstDataLogged = True
+            Else
+                If Not outputDetected Then
+                    Cells(selectedRow + 1, 3).Value = receivedData
+                    selectedRow = selectedRow + 1 ' Move to the next row
+                End If
+            End If
+            outputDetected = True
         Else
-            MsgBox "No data received."
+            outputDetected = False
         End If
-        
     Loop
 End Sub
