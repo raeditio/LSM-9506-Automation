@@ -11,7 +11,5 @@ Sub  LSM-9506 Automation()
     Dim Control As String
     Dim Delimiter As String
 
-    MsgBox ("COM: " &COM & vbNewLine & "Baud: " &Baud & vbNewLine & "Data: " &Data & vbNewLine & "StopBit: " &StopBit & vbNewLine & "Parity: " &Parity & vbNewLine & "Control: " &Control & vbNewLine & "Delimiter: " &Delimiter, 3)
-    If 
 
 End Sub
