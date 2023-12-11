@@ -3,13 +3,14 @@ Sub  LSM-9506 Automation()
     * ============================================================================
     */
 
-    Dim COM As Integer
-    Dim Baud As Integer
-    Dim Data As Integer
-    Dim StopBit As Integer
-    Dim Parity As String
-    Dim Control As String
-    Dim Delimiter As String
+    Dim Serial_COM As Integer
+    Dim Serial_Baud As Integer
+    Dim Serial_Parity As String
+    Dim Serial_DataBit As Integer
+    Dim Serial_StopBit As Integer
+    Dim Serial_Control As String
+    Dim Serial_Delimiter As String
 
+    UserForm1.Show
 
 End Sub
