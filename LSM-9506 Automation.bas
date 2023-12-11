@@ -32,34 +32,28 @@ Sub LSM9506_Automation()
     WAIT_TIME = 700
     receivedData = WaitForNonErrorData(COM, RUN, WAIT_TIME)
     
-    receivedData = WaitForNonErrorData(COM, QUERY, WAIT_TIME)
     'Assess measurement
-    If Left(receivedData, 2) <> ERROR Then
-        'Data is valid. Record data and move to the next row
-        ActiveCell.Value = receivedData
-        ActiveCell.Offset(1, 0).Select
-        PinCount = PinCount + 1
-        'Continue checking for NEXT_MEASUREMENT or ERROR
-        If PinCount < PinNumber Then
-            Sleep
-            receivedData = WaitForNonErrorData(COM, RUN, WAIT_TIME)
-            MsgBox (receivedData)
-            End If
-            'fLoop Until Left(receivedData, 2) = "ER"     'ERROR and NEXT_MEASUREMENT both begin with "ER"
+    Do
+        receivedData = WaitForNonErrorData(COM, QUERY, 2 * WAIT_TIME)
+        If Left(receivedData, 2) <> ERROR Then
+            'Data is valid. Record data and move to the next row
+            ActiveCell.Value = receivedData
+            PinCount = PinCount + 1
+            'Continue checking for NEXT_MEASUREMENT or ERROR
+        'If NEXT_MEASUREMENT is receieved, wait for a measurement
+        ElseIf Left(receivedData, 3) = NEXT_MEASUREMENT Then
+            Do
+                receivedData = WaitForNonErrorData(COM, COMMAND, WAIT_TIME)
+            Loop Until Left(receivedData, 3) <> NEXT_MEASUREMENT
+        ElseIf receiveData = "" Then
         Else
-            MsgBox ("Measurement Complete")
-            Exit Sub
-        End If
-    'If NEXT_MEASUREMENT is receieved, wait for a measurement
-    ElseIf Left(receivedData, 3) = NEXT_MEASUREMENT Then
-        Do
             receivedData = WaitForNonErrorData(COM, COMMAND, WAIT_TIME)
-        Loop Until Left(receivedData, 3) <> NEXT_MEASUREMENT
-    'Else
-    '    receivedData = READ_COM_PORT(COM, COMMAND, WAIT_TIME)
-    '    MsgBox ("ERROR: " & receivedData)
-    End If
-    'Disconnect from Port
+            MsgBox ("ERROR: " & receivedData)
+        End If
+    Loop Until PinCount = PinNumber
+    
+    MsgBox ("Measurement Complete")
+        'Disconnect from Port
     If STOP_COM_PORT(COM) = True Then
         MsgBox ("Disconnected")
     End If
