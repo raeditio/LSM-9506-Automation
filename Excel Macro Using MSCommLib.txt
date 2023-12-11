@@ -1,68 +1,57 @@
-Option Explicit
-
-Dim WithEvents serialPort As Object
-Dim outputDetected As Boolean
-Dim skipDetected As Boolean
-Dim receivedData As String
-
-Sub StartSerialCommunication()
-    Set serialPort = CreateObject("MSCommLib.MSComm")
+Sub ReadWriteSerialData_OpenStatement()
+    Dim comPort As String
+    comPort = InputBox("Enter COM Port (e.g., COM1):", "COM Port Selection", "COM1")
     
-    With serialPort
-        .CommPort = 1 ' Replace with your COM port number
-        .Settings = "9600,N,8,1" ' Replace with your serial settings
-        .InputMode = comInputModeText
-        .PortOpen = True
-    End With
+    If comPort = "" Then
+        comPort = "COM1" ' Default COM port if skipped
+    End If
     
-    StartDataCheckLoop
-End Sub
-
-Sub StartDataCheckLoop()
-    Dim checkDataThread As Object
-    Set checkDataThread = CreateObject("Scripting.FileSystemObject").CreateTextFile(ThisWorkbook.Path & "\CheckDataThread.vbs")
+    Open comPort For Binary Access Read Write As #1 Len = 1 ' Open the COM port
     
-    Dim scriptText As String
-    scriptText = "Set WshShell = CreateObject(""WScript.Shell"")" & vbCrLf & _
-                 "WshShell.Run """ & ThisWorkbook.Path & "\CheckDataLoop.vbs"", 0, False"
+    If Err Then
+        MsgBox "Error opening COM port. Check port settings."
+        Exit Sub
+    End If
     
-    checkDataThread.Write scriptText
-    checkDataThread.Close
+    ' Write 'R' command to the device
+    Print #1, "R";
     
-    Dim objShell As Object
-    Set objShell = CreateObject("WScript.Shell")
-    objShell.Run "wscript.exe " & ThisWorkbook.Path & "\CheckDataThread.vbs", 0, True
-End Sub
-
-Sub serialPort_OnComm()
-    Select Case serialPort.CommEvent
-        Case comEvReceive ' Data received
-            outputDetected = True
-            receivedData = serialPort.Input
-    End Select
-End Sub
-
-Sub LogData()
-    Dim selectedRow As Long
-    selectedRow = ActiveCell.Row
-    
-    Do While True
-        Application.Wait Now + TimeValue("0:00:02") ' Wait for 2 seconds
+    Dim receivedData As String
+    Do
+        DoEvents
+        Input #1, receivedData ' Read data from the COM port
         
-        If Not outputDetected Then
-            ' Record the received data if no output was detected
-            skipDetected = True
-            receivedData = serialPort.Input
-        ElseIf skipDetected Then
-            ' Record the next data after an output is skipped
-            receivedData = serialPort.Input
-            skipDetected = False ' Reset the skip detection flag
+        ' Process the received data based on requirements
+        Select Case True
+            Case Left(receivedData, 3) = "ER0"
+                Do
+                    Print #1, "D";
+                    DoEvents
+                    Input #1, receivedData ' Read data from the COM port
+                    If Left(receivedData, 3) <> "ER0" Then
+                        ActiveCell.Value = receivedData ' Record non-ER0 data to selected cell
+                        Exit Do
+                    End If
+                Loop Until False
             
-            ' Log the data into Column C starting from the selected row
-            Cells(selectedRow, 3).Value = receivedData
-            selectedRow = selectedRow + 1 ' Move to the next row
-        End If
+            Case Left(receivedData, 2) = "ER"
+                MsgBox "Error: " & receivedData & ". Terminating macro."
+                Close #1
+                Exit Sub
+            
+            Case receivedData = ""
+                MsgBox "No data received. Terminating macro."
+                Close #1
+                Exit Sub
+            
+            Case Else
+                ActiveCell.Value = receivedData ' Record data to selected cell
+        End Select
         
-        outputDetected = False ' Reset the output detection flag
-    Loop
+        ' Write 'D' command once every second
+        Print #1, "D";
+        Application.Wait Now + TimeValue("00:00:01") ' Wait for one second
+    Loop Until False
+    
+    Close #1 ' Close the COM port
 End Sub

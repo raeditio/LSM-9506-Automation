@@ -1,0 +1,67 @@
+Sub ReadWriteSerialData()
+    Dim comPort As String
+    comPort = InputBox("Enter COM Port (e.g., COM21):", "COM Port Selection", "COM21")
+    
+    If comPort = "" Then
+        comPort = "COM21" ' Default COM port if skipped
+    End If
+    
+    Dim scriptControl As Object
+    Set scriptControl = CreateObject("WScript.Shell")
+    
+    scriptControl.Run "mode " & comPort & ": baud=9600 parity=n data=8 stop=1" ' Set COM port settings
+    
+    Dim objShell As Object
+    Set objShell = CreateObject("WScript.Shell")
+    
+    objShell.Run "cmd /c echo R > " & comPort & ":", 0, True ' Send 'R' command to the device
+    Application.Wait Now + TimeValue("00:00:01") ' Wait for one second
+    
+    Dim receivedData As String
+    receivedData = ReadFromCOMPort(comPort)
+    
+    Select Case True
+        Case Left(receivedData, 3) = "ER0"
+            Do
+                objShell.Run "cmd /c echo D > " & comPort & ":", 0, True ' Send 'D' command until non-ER0 data received
+                Application.Wait Now + TimeValue("00:00:01") ' Wait for one second
+                receivedData = ReadFromCOMPort(comPort)
+                If Left(receivedData, 3) <> "ER0" Then
+                    ActiveCell.Value = receivedData ' Record non-ER0 data to selected cell
+                    Exit Do
+                End If
+            Loop Until False
+        
+        Case Left(receivedData, 2) = "ER"
+            MsgBox "Error: " & receivedData & ". Terminating macro."
+        
+        Case receivedData = ""
+            MsgBox "No data received. Terminating macro."
+        
+        Case Else
+            ActiveCell.Value = receivedData ' Record data to selected cell
+    End Select
+    
+    Do
+        objShell.Run "cmd /c echo D > " & comPort & ":", 0, True ' Send 'D' command once every second
+        Application.Wait Now + TimeValue("00:00:01") ' Wait for one second
+        receivedData = ReadFromCOMPort(comPort)
+        
+        If Left(receivedData, 3) = "ER0" Then
+            ' Do nothing if 'ER0' is received
+        Else
+            ActiveCell.Offset(1, 0).Value = receivedData ' Record data to the next cell
+        End If
+    Loop Until False
+End Sub
+
+Function ReadFromCOMPort(ByVal comPort As String) As String
+    Dim objFSO As Object
+    Set objFSO = CreateObject("Scripting.FileSystemObject")
+    
+    Dim file As Object
+    Set file = objFSO.OpenTextFile(comPort & ":", 1) ' Open COM port for reading
+    
+    ReadFromCOMPort = file.ReadAll ' Read data from the COM port
+    file.Close ' Close the file
+End Function

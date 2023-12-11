@@ -1,33 +1,91 @@
-Sub ReadSerialPortAndLogData()
-    Dim outputDetected As Boolean
-    Dim skipDetected As Boolean
+Sub ReadDataFromRS232()
+    Dim comPort As String
+    comPort = InputBox("Enter the COM port (e.g., COM21):", "COM Port Selection", "COM21")
+    
+    ' Set COM port settings using PowerShell
+    Dim setComSettings As String
+    setComSettings = "powershell.exe -Command ""& { $port= new-Object System.IO.Ports.SerialPort '" & comPort & "', 9600, [System.IO.Ports.Parity]::None, 8, [System.IO.Ports.StopBits]::One; $port.ReadTimeout = 5000; $port.NewLine = '\r'; $port.Open(); }"""
+    Shell setComSettings, vbHide
+    
+    ' Send data read command 'R' to the device
+    SendSerialData comPort, "R"
+    
     Dim receivedData As String
+    receivedData = WaitForNonErrorData(comPort) ' Wait for non-error data
     
-    outputDetected = False
-    skipDetected = False
-    receivedData = ""
-    
-    Do
-        Application.Wait Now + TimeValue("0:00:02") ' Wait for 2 seconds
-        
-        ' Read data from the serial port using PowerShell
-        Dim objShell As Object
-        Dim objExec As Object
-        Set objShell = CreateObject("WScript.Shell")
-        Set objExec = objShell.Exec("powershell.exe -Command ""& { $port= new-Object System.IO.Ports.SerialPort 'COM1', 9600; $port.Open(); Start-Sleep -s 1; $receivedData = $port.ReadLine(); $port.Close(); $receivedData }""")
-        
-        receivedData = objExec.StdOut.ReadAll()
-        
-        If Len(receivedData) > 0 Then
-            ' Log the received data into Column C starting from the selected row
-            Dim selectedRow As Long
-            selectedRow = ActiveCell.Row
+    ' Check for 'ER0' error code
+    If Left(receivedData, 3) = "ER0" Then
+        ' Continue sending 'D' command until non-error data is received
+        Do
+            SendSerialData comPort, "D" ' Send data request command 'D'
+            receivedData = WaitForNonErrorData(comPort) ' Wait for non-error data
             
-            Cells(selectedRow, 3).Value = receivedData
-            selectedRow = selectedRow + 1 ' Move to the next row
-        Else
-            MsgBox "No data received."
-        End If
+            ' Check if received data is non-error
+            If Left(receivedData, 3) <> "ER0" Then
+                ActiveCell.Value = Mid(receivedData, 4) ' Log data without the first three characters
+                Exit Do ' Exit loop after logging non-error data
+            End If
+        Loop
+    ElseIf Left(receivedData, 2) = "ER" Then
+        ' Terminate if an error starting with 'ER' is received
+        MsgBox "Error detected: " & receivedData
+        Exit Sub
+    ElseIf receivedData = "" Then
+        ' Terminate if no data is received after 5 seconds
+        MsgBox "No data received. Exiting."
+        Exit Sub
+    Else
+        ActiveCell.Value = Mid(receivedData, 4) ' Log data without the first three characters
+    End If
+    
+    ' Continuously send 'D' command until 'ER0' is received, and log the next non-error data
+    Do
+        SendSerialData comPort, "D" ' Send data request command 'D'
+        receivedData = WaitForNonErrorData(comPort) ' Wait for non-error data
         
+        ' Check for 'ER0' or other error codes
+        If Left(receivedData, 3) <> "ER0" And Left(receivedData, 2) = "ER" Then
+            MsgBox "Error detected: " & receivedData
+            Exit Sub
+        ElseIf Left(receivedData, 3) <> "ER0" Then
+            ActiveCell.Offset(1, 0).Value = Mid(receivedData, 4) ' Log data without the first three characters
+            Exit Do ' Exit loop after logging non-error data
+        End If
     Loop
 End Sub
+
+Function SendSerialData(comPort As String, data As String)
+    Dim command As String
+    command = "powershell.exe -Command ""& { $port= new-Object System.IO.Ports.SerialPort '" & comPort & "'; $port.NewLine = '\r'; $port.Open(); $port.WriteLine('" & data & "'); $port.Close(); }"""
+    Shell command, vbHide
+End Function
+
+Function WaitForNonErrorData(comPort As String) As String
+    Dim receivedData As String
+    Dim startTime As Double
+    startTime = Timer
+    
+    Do
+        SendSerialData comPort, "D" ' Send data request command 'D'
+        receivedData = ReadSerialData(comPort) ' Read received data
+        
+        If Left(receivedData, 3) <> "ER0" Then
+            WaitForNonErrorData = receivedData ' Return non-error data
+            Exit Function
+        End If
+        
+        ' Check for timeout (5 seconds)
+        If Timer - startTime > 5 Then
+            WaitForNonErrorData = ""
+            Exit Function
+        End If
+        
+        Application.Wait Now + TimeSerial(0, 0, 1) ' Wait for 1 second
+    Loop
+End Function
+
+Function ReadSerialData(comPort As String) As String
+    Dim command As String
+    command = "powershell.exe -Command ""& { $port= new-Object System.IO.Ports.SerialPort '" & comPort & "'; $port.NewLine = '\r'; $port.ReadTimeout = 5000; $port.Open(); $receivedData = $port.ReadLine(); $port.Close(); $receivedData }"""
+    ReadSerialData = VBA.CreateObject("WScript.Shell").Exec(command).StdOut.ReadAll()
+End Function
