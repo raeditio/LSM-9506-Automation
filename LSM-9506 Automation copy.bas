@@ -1,3 +1,4 @@
+Declare Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)
 Sub LSM9506_Automation()
     Dim COM As Long     ' COM Port No. selected by user
     Dim receivedData As String
@@ -14,7 +15,7 @@ Sub LSM9506_Automation()
     ' Dim SENT As Boolean
     Dim err As Integer      ' Error counter
     Dim average_count As Integer
-    Dim measurement_repeatset As Integer
+    Dim RepeatNumber As Integer
 
     ' Show Serial Setting Form
     SerialSetting.Show
@@ -24,7 +25,7 @@ Sub LSM9506_Automation()
     ' PinNumber = InputBox("Please enter the number of pins to be tested", "Pin Number", 3)
     PinNumberSet.Show
     PinNumber = PinNumberSet.PinNumber
-    measurement_repeatset = PinNumberSet.MeasurementRepeat
+    RepeatNumber = PinNumberSet.RepeatNumber
 
     If START_COM_PORT(COM) = False Then
         MsgBox ("Connection failure. Please reconnect the device!")
@@ -56,6 +57,8 @@ NEXT_QUERY:
         MsgBox ("Please Check Connection")
     End If
     
+    Sleep 200
+    
     receivedData = READ_COM_PORT(COM)
     ' Wait until all characters are received
     If Left(receivedData, 2) <> ERROR Then
@@ -64,15 +67,16 @@ NEXT_QUERY:
         Wend
     End If
     
+    
     If Left(receivedData, 2) <> ERROR Then
         ' If at state ready for next measurement, take next measurement.
         If STATE = STATE_OK Then
             'Valid data. Record measurement and move on
-            ActiveCell.Value = (ActiveCell.Value * (average_count-1) + receivedData) / average_count
+            ActiveCell.Value = (ActiveCell.Value * (average_count - 1) + receivedData) / average_count
             STATE = STATE_WAIT
             err = 0
             average_count = average_count + 1
-            If average_count = measurement_repeatset Then
+            If average_count = RepeatNumber + 1 Then
                 average_count = 1
                 ActiveCell.Offset(1, 0).Select
                 PinCount = PinCount + 1
