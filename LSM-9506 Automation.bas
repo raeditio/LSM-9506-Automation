@@ -12,7 +12,7 @@ Sub LSM9506_Automation()
     Const ERROR As String = "ER"
     const STATUS_OK As Integer = 1
     const STATUS_NEXT As Integer = 2
-    ' const STATUS_ERROR As Integer = 3
+    Dim err As Integer
     Dim STATUS As Integer
     'The device outputs "ER0" for no measurement. Thus, the error indicates that the user has removed the pin for next measurement
     Const NEXT_MESUREMENT As String = "ER0"
@@ -35,32 +35,43 @@ Sub LSM9506_Automation()
     'Start measurement
     WAIT_TIME = 700
     STATUS = STATUS_NEXT
+    
     receivedData = WaitForNonErrorData(COM, RUN, WAIT_TIME)
+
+    'ER9 handling block
+    For err = 0 To 2
+        If Left(receivedData, 2) = ERROR Then
+            receivedData = WaitForNonErrorData(COM, RUN, WAIT_TIME)
+        Else
+            err = 0
+            Exit While
+        End If
+    Next err
+    If err = 2 Then
+        MsgBox ("Error. Please check the device!")
+        Exit Sub
+    End If
     
     'Assess measurement
-    Do
-        If receivedData = ERROR and receivedData <> NEXT_MESUREMENT Then
-            ' Error. Stop.
-            MsgBox ("Error. Please check the device!")
-            Exit Sub
-        ElseIf receivedData = NEXT_MESUREMENT Then
-            ' No data. Move on.
-            STATUS = STATUS_NEXT
-        Else
+    While PinCount < PinNumber
+        If receivedData <> ERROR
             If STATUS = STATUS_NEXT Then
-                ' Data is valid. Record measurement and move on.
+                ' Ready for measurement
                 ActiveCell.Value = receivedData
                 ActiveCell.Offset(1, 0).Select
                 PinCount = PinCount + 1
                 STATUS = STATUS_OK
-            Else
-                ' User has not progressed to the next pin. Wait.
+            End If
+        Elseif receivedData = NEXT_MESUREMENT
+            ' Wait for the user to place next pin
+            STATUS = STATUS_NEXT
+        Else
+            ' Error handling
+            MsgBox ("Error. Please check the device!")
+            Exit Sub
         End If
-        ' Receive next data output
         receivedData = WaitForNonErrorData(COM, QUERY, 2 * WAIT_TIME)
-    Loop Until PinCount = PinNumber
-            
-        
+    Wend      
     
     MsgBox ("Measurement Complete")
         'Disconnect from Port
