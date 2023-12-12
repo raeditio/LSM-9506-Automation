@@ -9,8 +9,8 @@ Sub LSM9506_Automation()
     Const STATE_OK As Integer = 1
     Const STATE_WAIT As Integer = 0
     Dim STATE As Integer
-    'The device outputs "ER0" for no measurement. Thus, the error indicates that the user has removed the pin for next measurement
-    Const NEXT_MESUREMENT As String = "ER0"
+    ' The device outputs "ER0" for no measurement. Thus, the error indicates that the user has removed the pin for next measurement
+    ' Const NEXT_MESUREMENT As String = "ER0"
     Dim SENT As Boolean
     Dim err As Integer
 
@@ -38,24 +38,17 @@ Sub LSM9506_Automation()
     STATE = STATE_OK
     err = 0
     
-    SENT = SEND_COM_PORT(COM, RUN)
-    
 NEXT_QUERY:
-    MsgBox (PinCount)
-    MsgBox ("State: " & STATE)
     If SEND_COM_PORT(COM, QUERY) = False Then
         MsgBox ("Please Check Connection")
     End If
     
-    receivedData = READ_COM_PORT(21)
+    receivedData = READ_COM_PORT(COM)
     If Left(receivedData, 2) <> ERROR Then
         While Len(receivedData) < 7
-            receivedData = READ_COM_PORT(21)
+            receivedData = READ_COM_PORT(COM)
         Wend
     End If
-    
-    MsgBox ("DEBUG1")
-    MsgBox (receivedData)
     
     If Left(receivedData, 2) <> ERROR Then
         If STATE = STATE_OK Then
@@ -72,7 +65,7 @@ NEXT_QUERY:
             GoTo DISCONNECT
         End If
         
-        If Left(receivedData, 3) = ER0 Then
+        If receivedData = "ER0" & vbCr Then
         ' Wait for next pin to be placed
         STATE = STATE_OK
         err = 0
