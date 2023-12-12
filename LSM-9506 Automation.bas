@@ -53,7 +53,7 @@ Sub LSM9506_Automation()
         End If
         ' Receive next data output
         receivedData = WaitForNonErrorData(COM, QUERY, 2 * WAIT_TIME)
-    Until PinCount = PinNumber
+    Loop Until PinCount = PinNumber
             
         
     
