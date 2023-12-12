@@ -13,6 +13,7 @@ Sub LSM9506_Automation()
     ' Const NEXT_MESUREMENT As String = "ER0"
     Dim SENT As Boolean
     Dim err As Integer
+    ' Dim disconnect_button As Boolean
 
     'Show Serial Setting Form
     SerialSetting.Show
@@ -37,6 +38,12 @@ Sub LSM9506_Automation()
     PinCount = 0
     STATE = STATE_OK
     err = 0
+    
+    EXITMACRO.Show
+    If EXITMACRO.disconnect_button = True Then
+        GoTo DISCONNECT
+    End If
+    
     
 NEXT_QUERY:
     If SEND_COM_PORT(COM, QUERY) = False Then
