@@ -12,7 +12,7 @@ Sub LSM9506_Automation()
     Const ERROR As String = "ER"
     const STATUS_OK As Integer = 1
     const STATUS_NEXT As Integer = 2
-    const STATUS_ERROR As Integer = 3
+    ' const STATUS_ERROR As Integer = 3
     Dim STATUS As Integer
     'The device outputs "ER0" for no measurement. Thus, the error indicates that the user has removed the pin for next measurement
     Const NEXT_MESUREMENT As String = "ER0"
@@ -45,11 +45,16 @@ Sub LSM9506_Automation()
             Exit Sub
         ElseIf receivedData = NEXT_MESUREMENT Then
             ' No data. Move on.
+            STATUS = STATUS_NEXT
         Else
-            ' Data is valid. Record measurement and move on.
-            ActiveCell.Value = receivedData
-            ActiveCell.Offset(1, 0).Select
-            PinCount = PinCount + 1
+            If STATUS = STATUS_NEXT Then
+                ' Data is valid. Record measurement and move on.
+                ActiveCell.Value = receivedData
+                ActiveCell.Offset(1, 0).Select
+                PinCount = PinCount + 1
+                STATUS = STATUS_OK
+            Else
+                ' User has not progressed to the next pin. Wait.
         End If
         ' Receive next data output
         receivedData = WaitForNonErrorData(COM, QUERY, 2 * WAIT_TIME)

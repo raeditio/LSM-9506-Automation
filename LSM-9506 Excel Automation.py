@@ -36,8 +36,8 @@ s.write(command)
 data = s.read(9)
 for i in range(1, pinNumber):
     if data[:2] != "ER":    
-        sheet['C1'].value = data[-7]
-    if data[:2] == "ER" and data[3] == "0" or data[3] == "9": # Check if the device is ready to take a measurement. "ER9" signifies a timeout error.
+        sheet["C"+i].value = data[-7]
+    if data[:2] == "ER" and (data[3] == "0" or data[3] == "9"): # Check if the device is ready to take a measurement. "ER9" signifies a timeout error.
         while data[:2] == "ER":
             # Initilize the Query command
             command = QUERY
@@ -45,13 +45,11 @@ for i in range(1, pinNumber):
             # Read data specified by the number of bytes
             data = s.read(9)
         # Record measurement data
-        sheet['C6'].value = data[-7]
     else:
         # Return error in console
         print("Error: %s. Please reconnect the device and try again." % data)
         break
-        exit(1)
 # Close serial port
 close(SerialPort)
-wb.save(r'C:\Users\Philip\Desktop\LSM-9506 Excel Automation.xlsm')
+wb.save(r'C:\Users\phili\Downloads\LSM-9506 Excel Automation.xlsm')
 exit(0)
