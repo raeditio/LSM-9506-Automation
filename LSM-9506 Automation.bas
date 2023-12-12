@@ -1,13 +1,13 @@
 Sub LSM9506_Automation()
-    Dim COM As Long
+    Dim COM As Long     ' COM Port No. selected by user
     Dim receivedData As String
-    Dim PinNumber As Integer
+    Dim PinNumber As Integer    ' Total number of pins to be entered in by user
     Dim PinCount As Integer
-    Const RUN As String = "RN" & vbCr
-    Const QUERY As String = "DN" & vbCr
+    Const RUN As String = "RN" & vbCr       ' Single-run measurement command without program number response
+    Const QUERY As String = "DN" & vbCr     ' Data request command without program number response
     Const ERROR As String = "ER"
-    Const STATE_OK As Integer = 1
-    Const STATE_WAIT As Integer = 0
+    Const STATE_OK As Integer = 1           ' Ready to take next measurement state
+    Const STATE_WAIT As Integer = 0         ' Wait for next item state
     Dim STATE As Integer
     ' The device outputs "ER0" for no measurement. Thus, the error indicates that the user has removed the pin for next measurement
     ' Const NEXT_MESUREMENT As String = "ER0"
@@ -39,18 +39,20 @@ Sub LSM9506_Automation()
     STATE = STATE_OK
     err = 0
     
-    EXITMACRO.Show
-    If EXITMACRO.disconnect_button = True Then
-        GoTo DISCONNECT
-    End If
+    'EXITMACRO.Show
+    'If EXITMACRO.disconnect_button = True Then
+    '    GoTo DISCONNECT
+    'End If
     
     
 NEXT_QUERY:
+    ' Send QUERY COMMAND
     If SEND_COM_PORT(COM, QUERY) = False Then
         MsgBox ("Please Check Connection")
     End If
     
     receivedData = READ_COM_PORT(COM)
+    ' Wait until all characters are received
     If Left(receivedData, 2) <> ERROR Then
         While Len(receivedData) < 7
             receivedData = READ_COM_PORT(COM)
@@ -58,6 +60,7 @@ NEXT_QUERY:
     End If
     
     If Left(receivedData, 2) <> ERROR Then
+        ' If at state ready for next measurement, take next measurement.
         If STATE = STATE_OK Then
             'Valid data. Record measurement and move on
             ActiveCell.Value = receivedData
@@ -67,11 +70,12 @@ NEXT_QUERY:
             err = 0
         End If
     Else
+        ' Display error message
         If err = 5 Then
             MsgBox ("ERROR: " & receivedData)
             GoTo DISCONNECT
         End If
-        
+        ' Set state ready for next measurement
         If receivedData = "ER0" & vbCr Then
         ' Wait for next pin to be placed
         STATE = STATE_OK
@@ -88,7 +92,7 @@ NEXT_QUERY:
     
 DISCONNECT:
     If STOP_COM_PORT(COM) = True Then
-        MsgBox ("Disconnected")
+        MsgBox ("Measurement Complete" & vbCr & "Disconnected")
     End If
     
 End Sub
