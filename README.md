@@ -12,7 +12,7 @@ is no longer returned.
 # Implementation
 To automate the process, an excel VBA script was written to minimize the number of prerequisiste steps that needs to be achieved before the automation can be run swiftly.
 
-# Use
+# How to Use
 To use the script, download the LSM-9506 Excel Automation copy.bas from the source codes. All other scripts are outdated and may not work. The code was written in VBA6, so
 it may not work on future models of Excel. Also download the SerialSetting.frm, SerialSetting.frx, PinNumberSet.frm and PinNumberSet.frx. Save these files to a convenient location.
 Open Excel and enter Visual Basic (Alt+F11). On the left hand project section, right click under "VBAProject" and click Import. Import all the downloaded files. Alt+Q
