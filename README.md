@@ -20,7 +20,7 @@ To automate the process, an excel VBA script was written to minimize the number 
 
 # How to Use
 To use the script, download the LSM-9506 Excel Automation copy.bas from the source codes. All other scripts are outdated and may not work. The code was written in VBA6, so
-it may not work on future models of Excel. Also download the SerialSetting.frm, SerialSetting.frx, PinNumberSet.frm and PinNumberSet.frx. Save these files to a convenient location.
+it may not work on future models of Excel. Also download the SERIAL_PORT_VBA (or VBA6 depending on your version) SerialSetting.frm, SerialSetting.frx, PinNumberSet.frm and PinNumberSet.frx. Save these files to a convenient location.
 Open Excel and enter Visual Basic (Alt+F11). On the left hand project section, right click under "VBAProject" and click Import. Import all the downloaded files. Alt+Q
 to close the Visual Basics Window. Either create a shortcut for the macro or run it using the macro button in Excel under "View." When executed, the macro will prompt the user
 for the COM port number. Enter the correct COM port number the LSM-9506 is connected to and check that the COM port settings on the device and on the computer that is connected
