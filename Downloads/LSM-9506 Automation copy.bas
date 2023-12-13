@@ -1,3 +1,5 @@
+' #If Win64 Then
+'     Declare Sub Sleep64 Lib "kernel32" (ByVal dwMilliseconds As LongPtr)
 Declare Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)
 Sub LSM9506_Automation()
     Dim COM As Long     ' COM Port No. selected by user
