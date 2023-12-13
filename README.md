@@ -1,10 +1,8 @@
-##### Table of Contents  
+## Table of Contents  
 - [Debrief](#headers)
 - [Method](#headers)
 - [Implementation](#headers)
 - [How to Use](#headers)
-<a name="headers"/>
-## Headers
 
 # Debrief
 This project intends to read data from the LSM-9506 device through serial communication using the RS-232 protocol and record the measurements on a custom MS Excel spreadsheet.
