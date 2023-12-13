@@ -5,7 +5,7 @@
 - [How to Use](#headers)
 
 # Debrief
-This project intends to read data from the LSM-9506 device through serial communication using the RS-232 protocol and record the measurements on a custom MS Excel spreadsheet.
+This project intends to read data from the Mitutoyo LSM-9506 laser micrometer device through serial communication using the RS-232 protocol and record the measurements on a custom MS Excel spreadsheet.
 See the **Use** Section below on how to use.
 When either the Run or Query command is sent to the device, the device will return a string of data. The data will be parsed and the value of the data will be displayed in the Excel spreadsheet.
 - If the device returns an error, the error will be displayed in the console.
