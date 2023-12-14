@@ -3,6 +3,7 @@
 #Else
  Public Declare Sub Sleep Lib "kernel32" (ByVal dwMilliseconds as Long) 'For 32 Bit Systems
 #End If
+
 Sub LSM9506_Automation()
     Dim COM As Long     ' COM Port No. selected by user
     Dim receivedData As String
@@ -48,7 +49,10 @@ NEXT_QUERY:
     MeasurePin(receivedData)
 
     ' Check error counter
-    ChcekError(err)
+    If err = 5 Then
+        MsgBox ("ERROR: " & receivedData)
+        DISCONNECT(COM) 
+    End If
 
     ' Check if all pins are measured
     If PinCount < PinNumber Then
@@ -73,7 +77,7 @@ Private  Function FULL_READ_COM(COM As Long)
     End If
 End Function
 
-Private  Function MeasurePin(receivedData As String)
+Private Function MeasurePin(receivedData As String)
     If Len(receivedData) = 7 Then       ' Valid data. Record measurement and move on
         ActiveCell.Value = (ActiveCell.Value * (RepeatCount - 1) + receivedData) / RepeatCount
         CanProceed = False      ' Wait for the user to move on to the next pin
@@ -92,14 +96,6 @@ Private  Function MeasurePin(receivedData As String)
         Else
             err = err + 1       ' Increment error counter
         End If
-End Function
-
-' Check error counter
-Private  Function ChcekError(err)
-    If err = 5 Then
-        MsgBox ("ERROR: " & receivedData)
-        DISCONNECT(COM) 
-    End If
 End Function
 
 ' Disconnect the device
