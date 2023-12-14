@@ -12,7 +12,7 @@ Sub LSM9506_Automation()
     Const QUERY As String = "DN" & vbCr       ' Data request command without program number response
     Dim CanProceed As Boolean
     Dim err As Integer      ' Error counter
-    Dim average_count As Integer
+    Dim RepeatCount As Integer
     Dim RepeatNumber As Integer
 
     ' Show Serial Setting Form
@@ -23,19 +23,16 @@ Sub LSM9506_Automation()
     PinNumber = PinNumberSet.PinNumber
     RepeatNumber = PinNumberSet.RepeatNumber
 
+    ' Open COM Port
     If START_COM_PORT(COM) = False Then
         MsgBox ("Connection failure. Please reconnect the device!")
         DISCONNECT(COM)
     End If
     
     PinCount = 0
-    MsgBox ("Place the first pin on the LSM-9506.")
-    
-    PinCount = 0
     CanProceed = True
     err = 0
-    average_count = 1
-    
+    RepeatCount = 1
     
 NEXT_QUERY:
     ' Send QUERY COMMAND
@@ -64,14 +61,26 @@ End Sub
 ' Functions
 ' //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ' //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+' Use this function to read COM port until all characters are received
+Private  Function FULL_READ_COM(COM As Long)
+    receivedData = READ_COM_PORT(COM)
+    ' Wait until all characters are received
+    If Left(receivedData, 2) <> ERROR Then
+        While Len(receivedData) < 7
+            receivedData = READ_COM_PORT(COM)
+        Wend
+    End If
+End Function
+
 Private  Function MeasurePin(receivedData As String)
     If Len(receivedData) = 7 Then       ' Valid data. Record measurement and move on
-        ActiveCell.Value = (ActiveCell.Value * (average_count - 1) + receivedData) / average_count
+        ActiveCell.Value = (ActiveCell.Value * (RepeatCount - 1) + receivedData) / RepeatCount
         CanProceed = False      ' Wait for the user to move on to the next pin
         err = 0             ' Reset error counter
-        average_count = average_count + 1       ' Increment average counter
-        If average_count = RepeatNumber + 1 Then    ' Take the average of the measurements
-            average_count = 1
+        RepeatCount = RepeatCount + 1       ' Increment average counter
+        If RepeatCount = RepeatNumber + 1 Then    ' Take the average of the measurements
+            RepeatCount = 1
             ActiveCell.Offset(1, 0).Select
             PinCount = PinCount + 1
         End If
@@ -90,17 +99,6 @@ Private  Function ChcekError(err)
     If err = 5 Then
         MsgBox ("ERROR: " & receivedData)
         DISCONNECT(COM) 
-    End If
-End Function
-
-' Use this function to read COM port until all characters are received
-Private  Function FULL_READ_COM(COM As Long)
-    receivedData = READ_COM_PORT(COM)
-    ' Wait until all characters are received
-    If Left(receivedData, 2) <> ERROR Then
-        While Len(receivedData) < 7
-            receivedData = READ_COM_PORT(COM)
-        Wend
     End If
 End Function
 
