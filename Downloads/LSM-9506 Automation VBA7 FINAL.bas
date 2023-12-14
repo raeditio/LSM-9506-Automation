@@ -1,7 +1,7 @@
-#If Win64 Then
-    Declare Sub Sleep64 Lib "kernel32" (ByVal dwMilliseconds As LongPtr)
+#If VBA7 Then
+ Public Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As LongPtr) 'For 64 Bit Systems
 #Else
-    Declare Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)
+ Public Declare Sub Sleep Lib "kernel32" (ByVal dwMilliseconds as Long) 'For 32 Bit Systems
 #End If
 Sub LSM9506_Automation()
     Dim COM As Long     ' COM Port No. selected by user
@@ -10,7 +10,7 @@ Sub LSM9506_Automation()
     Dim PinCount As Integer
     ' Const RUN As String = "RN" & vbCr       ' Single-run measurement command without program number response
     Const QUERY As String = "DN" & vbCr       ' Data request command without program number response
-    Dim CanProceed As As Boolean
+    Dim CanProceed As Boolean
     Dim err As Integer      ' Error counter
     Dim average_count As Integer
     Dim RepeatNumber As Integer
