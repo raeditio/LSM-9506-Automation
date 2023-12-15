@@ -1,5 +1,8 @@
 import serial
 
+# Load template is determined by the esp32_gpio23 input
+esp32_gpio23 = 1  # Replace with the appropriate value from ESP32 GPIO 23
+
 # Open the serial port
 ser = serial.Serial('COM1', 9600)  # Replace 'COM1' with the appropriate port and baud rate
 
@@ -19,11 +22,13 @@ print(reply)
 
 import openpyxl
 
-# Load the Excel template
-workbook = openpyxl.load_workbook('your_template.xlsx')
+# Load template is determined by the user button-press input
+if esp32_gpio23 == 1:
+    # Load the Excel template
+    workbook = openpyxl.load_workbook('your_template.xlsx')
 
 # Select the active sheet (you can also specify a sheet by name)
-sheet = wb.active
+sheet = workbook.active
 
 # Get the active cell
 active_cell = sheet.active_cell
@@ -32,4 +37,4 @@ active_cell = sheet.active_cell
 active_cell.value = 'Printed in active cell'
 
 # Save the changes to a new file
-wb.save('updated_template.xlsx')
+workbook.save('updated_template.xlsx')
