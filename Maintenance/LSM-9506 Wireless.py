@@ -1,40 +1,20 @@
-import serial
+import socket
 
-# Load template is determined by the esp32_gpio23 input
-esp32_gpio23 = 1  # Replace with the appropriate value from ESP32 GPIO 23
+HOST = '0.0.0.0'  # Accept connections on any available network interface
+PORT = 8888        # Use the same port as defined in your ESP32 code
 
-# Open the serial port
-ser = serial.Serial('COM1', 9600)  # Replace 'COM1' with the appropriate port and baud rate
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
+    server_socket.bind((HOST, PORT))
+    server_socket.listen()
 
-# Send command
-command = 'your_command_here'
-ser.write(command.encode())  # Convert the command to bytes and send it
+    print(f"Server listening on port {PORT}")
 
-# Read the reply
-reply = ser.read_until(b'\r')  # Read until the delimiter '\r' is encountered
-reply = reply.decode()  # Convert the reply from bytes to string
-
-# Close the serial port
-ser.close()
-
-# Print the reply
-print(reply)
-
-import openpyxl
-
-# Load template is determined by the user button-press input
-if esp32_gpio23 == 1:
-    # Load the Excel template
-    workbook = openpyxl.load_workbook('your_template.xlsx')
-
-# Select the active sheet (you can also specify a sheet by name)
-sheet = workbook.active
-
-# Get the active cell
-active_cell = sheet.active_cell
-
-# Print information to the active cell
-active_cell.value = 'Printed in active cell'
-
-# Save the changes to a new file
-workbook.save('updated_template.xlsx')
+    conn, addr = server_socket.accept()
+    with conn:
+        print('Connected by', addr)
+        while True:
+            data = conn.recv(1024)  # Receive data (adjust buffer size as needed)
+            if not data:
+                break
+            print('Received:', data.decode())
+            # Here, you can write the received data to a file, database, or perform any required processing

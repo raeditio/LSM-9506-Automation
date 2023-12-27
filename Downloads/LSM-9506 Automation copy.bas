@@ -1,3 +1,5 @@
+' Try using CrLf instead of vbCr
+
 ' #If Win64 Then
 '     Declare Sub Sleep64 Lib "kernel32" (ByVal dwMilliseconds As LongPtr)
 Declare Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)
