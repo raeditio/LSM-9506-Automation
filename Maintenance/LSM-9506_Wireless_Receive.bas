@@ -1,19 +1,17 @@
-Dim WithEvents serverSocket As Winsock ' Declare Winsock variable
+Sub GetDataFromESP32OverLAN()
+    Dim req As Object
+    Set req = CreateObject("MSXML2.XMLHTTP")
 
-Private Sub Workbook_Open()
-    Set serverSocket = New Winsock ' Initialize Winsock object
-    serverSocket.LocalPort = 5555 ' Specify the port number to listen on
-    serverSocket.Listen ' Start listening for incoming connections
-End Sub
+    ' Send command to ESP32 over LAN (replace IP with ESP32's IP)
+    req.Open "GET", "http://esp32_ip_address/command", False
+    req.send
 
-Private Sub serverSocket_ConnectionRequest(ByVal requestID As Long)
-    serverSocket.Accept requestID ' Accept the incoming connection request
-End Sub
-
-Private Sub serverSocket_DataArrival(ByVal bytesTotal As Long)
-    Dim receivedData As String
-    serverSocket.GetData receivedData, vbString ' Get the received data
-    
-    ' Write received data into the active cell
-    ActiveCell.Value = receivedData
+    If req.Status = 200 Then
+        ' Get data from ESP32 and log it onto Excel
+        Dim receivedData As String
+        receivedData = req.responseText
+        Sheets("Sheet1").Range("A1").Value = receivedData ' Modify cell as needed
+    Else
+        MsgBox "Error: " & req.Status & " - " & req.statusText
+    End If
 End Sub
